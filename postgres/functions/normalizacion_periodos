@@ -1,0 +1,311 @@
+/*------------------------------------------------------------------
+-- 1) Convierte nombre o abreviatura de mes (español / inglés) a número (1–12)
+------------------------------------------------------------------*/
+CREATE OR REPLACE FUNCTION public.month_number(m text)
+  RETURNS int
+  LANGUAGE plpgsql IMMUTABLE AS
+$$
+DECLARE
+    mm text := lower(trim(m));
+BEGIN
+    RETURN CASE mm
+        -- Español completo y abreviaturas
+        WHEN 'enero'      THEN 1
+        WHEN 'ene'        THEN 1
+        WHEN 'febrero'    THEN 2
+        WHEN 'feb'        THEN 2
+        WHEN 'marzo'      THEN 3
+        WHEN 'mar'        THEN 3
+        WHEN 'abril'      THEN 4
+        WHEN 'abr'        THEN 4
+        WHEN 'mayo'       THEN 5
+        WHEN 'junio'      THEN 6
+        WHEN 'jun'        THEN 6
+        WHEN 'julio'      THEN 7
+        WHEN 'jul'        THEN 7
+        WHEN 'agosto'     THEN 8
+        WHEN 'ago'        THEN 8
+        WHEN 'septiembre' THEN 9
+        WHEN 'sep'        THEN 9
+        WHEN 'octubre'    THEN 10
+        WHEN 'oct'        THEN 10
+        WHEN 'noviembre'  THEN 11
+        WHEN 'nov'        THEN 11
+        WHEN 'diciembre'  THEN 12
+        WHEN 'dic'        THEN 12
+
+        -- Inglés completo y abreviaturas
+        WHEN 'january'    THEN 1
+        WHEN 'jan'        THEN 1
+        WHEN 'february'   THEN 2
+        WHEN 'feb'        THEN 2
+        WHEN 'march'      THEN 3
+        WHEN 'mar'        THEN 3
+        WHEN 'april'      THEN 4
+        WHEN 'apr'        THEN 4
+        WHEN 'may'        THEN 5
+        WHEN 'june'       THEN 6
+        WHEN 'jun'        THEN 6
+        WHEN 'july'       THEN 7
+        WHEN 'jul'        THEN 7
+        WHEN 'august'     THEN 8
+        WHEN 'aug'        THEN 8
+        WHEN 'september'  THEN 9
+        WHEN 'sep'        THEN 9
+        WHEN 'october'    THEN 10
+        WHEN 'oct'        THEN 10
+        WHEN 'november'   THEN 11
+        WHEN 'nov'        THEN 11
+        WHEN 'december'   THEN 12
+        WHEN 'dec'        THEN 12
+
+        ELSE NULL
+    END;
+END;
+$$;
+
+
+/*------------------------------------------------------------------
+--  normalize_span_date  · versión con regex insensible a mayúsculas
+------------------------------------------------------------------*/
+/*CREATE OR REPLACE FUNCTION public.normalize_span_date (
+    txt    text,
+    is_end boolean DEFAULT false
+) RETURNS date
+LANGUAGE plpgsql IMMUTABLE AS
+$$
+DECLARE
+    raw   text := coalesce(txt,'');   -- original
+    clean text;                       -- cadena normalizada
+BEGIN
+    /* 0) atajo para YYYY-MM-DD */
+    IF raw ~ '^\d{4}-\d{2}-\d{2}$' THEN
+        RETURN to_date(raw,'YYYY-MM-DD');
+    END IF;
+    /* —————————————————————————————
+       1. Normalizaciones de caracteres
+    ————————————————————————————— */
+    -- NBSP (U+00A0) y NNBSP (U+202F)  →  espacio normal
+    clean := translate(raw, chr(160)||chr(8239), '  ');
+
+    -- minúsculas + trim “clásico”
+    clean := lower(trim(clean));
+
+    /* Sustituimos **cualquier** de estos guiones:
+       -  U+002D  "-"  (ASCII)
+       -  U+2010  "‐"  (hyphen)
+       -  U+2011  "‑"  (no‑break hyphen)
+       -  U+2012  "‒"  (figure dash)
+       -  U+2013  "–"  (en dash)
+       -  U+2014  "—"  (em dash)              */
+      clean := regexp_replace(
+            clean,
+            '[\u2010\u2011\u2012\u2013\u2014]+',  -- solo guiones Unicode
+            ' ',
+            'g'
+         );
+
+
+    -- quita “ de ” intermedio
+    clean := regexp_replace(clean, '\s+de\s+', ' ', 'g');
+
+    -- compacta espacios repetidos
+    clean := regexp_replace(clean, '\s+', ' ', 'g');
+
+    /* —————————————————————————————
+       2. Resto de la lógica = igual
+    ————————————————————————————— */
+    IF clean = '' OR clean IN (
+        'present','presente','current','actualidad','actualmente','actual',
+        'ongoing','en curso','n/a','na','ac'
+    ) THEN
+        RETURN CASE WHEN is_end THEN DATE '9999-12-31' ELSE NULL END;
+    END IF;
+/*2.a*/
+    IF clean ~ '^\d{4}-\d{2}-\d{2}$'       THEN
+        RETURN to_date(clean,'YYYY-MM-DD');
+    END IF;
+  
+/*2.b*/
+
+IF clean ~ '^\d{1,2}[/-]\d{1,2}[/-]\d{4}$' THEN   -- DD/MM/YYYY  o  DD-MM-YYYY
+    clean := regexp_replace(clean, '-', '/', 'g'); -- todo con “/”
+    RETURN to_date(clean,'DD/MM/YYYY');
+END IF;
+
+/*2.c*/
+    IF clean ~ '^\d{2}/\d{4}$'             THEN
+        RETURN CASE WHEN is_end
+                    THEN (date_trunc('month', to_date('01/'||clean,'DD/MM/YYYY'))
+                          + interval '1 month -1 day')::date
+                    ELSE to_date('01/'||clean,'DD/MM/YYYY')
+               END;
+    END IF;
+/*2.d*/
+    IF clean ~ '^[[:alpha:]]+ \d{4}$'      THEN
+        DECLARE
+            m int := month_number(split_part(clean,' ',1));
+            y int := split_part(clean,' ',2)::int;
+        BEGIN
+            IF m IS NULL THEN RETURN NULL; END IF;
+            RETURN CASE WHEN is_end
+                        THEN (make_date(y,m,1) + interval '1 month -1 day')::date
+                        ELSE  make_date(y,m,1)
+                   END;
+        END;
+    END IF;
+/*2.e*/
+    IF clean ~ '^\d{4}$'                   THEN
+        RETURN CASE WHEN is_end
+                    THEN make_date(clean::int,12,31)
+                    ELSE make_date(clean::int, 1, 1)
+               END;
+    END IF;
+
+    RETURN NULL;        -- formato desconocido
+END;
+$$;*/
+
+/*------------------------------------------------------------------
+--  normalize_span_date  · añadido soporte AAAA-MM  y MM-AAAA
+------------------------------------------------------------------*/
+CREATE OR REPLACE FUNCTION public.normalize_span_date (
+    txt    text,
+    is_end boolean DEFAULT false
+) RETURNS date
+LANGUAGE plpgsql IMMUTABLE AS
+$$
+DECLARE
+    raw   text := coalesce(txt,'');   -- original
+    clean text;                       -- cadena normalizada
+BEGIN
+    /* 0) atajo para YYYY-MM-DD */
+    IF raw ~ '^\d{4}-\d{2}-\d{2}$' THEN
+        RETURN to_date(raw,'YYYY-MM-DD');
+    END IF;
+
+    /* ---------- normalizaciones de caracteres ---------- */
+    clean := translate(raw, chr(160)||chr(8239), '  ');
+    clean := lower(trim(clean));
+    clean := regexp_replace(
+                clean,
+                '[\u2010\u2011\u2012\u2013\u2014]+',  -- guiones «especiales»
+                ' ',
+                'g'
+             );
+    clean := regexp_replace(clean, '\s+de\s+', ' ', 'g');
+    clean := regexp_replace(clean, '\s+', ' ', 'g');
+
+    /* ---------- palabras clave «actualidad» ---------- */
+    IF clean = '' OR clean IN (
+        'present','presente','current','actualidad','actualmente','actual',
+        'ongoing','en curso','n/a','na','ac'
+    ) THEN
+        RETURN CASE WHEN is_end THEN DATE '9999-12-31' ELSE NULL END;
+    END IF;
+
+    /* 1) AAAA/MM/DD   (ya estaba) */
+    IF clean ~ '^\d{4}-\d{2}-\d{2}$' THEN
+        RETURN to_date(clean,'YYYY-MM-DD');
+    END IF;
+
+    /* 2) DD/MM/AAAA  o  DD-MM-AAAA (ya estaba) */
+    IF clean ~ '^\d{1,2}[/-]\d{1,2}[/-]\d{4}$' THEN
+        clean := regexp_replace(clean, '-', '/', 'g');
+        RETURN to_date(clean,'DD/MM/YYYY');
+    END IF;
+
+    /* 3) ⚡  MM/AAAA  **o**  MM-AAAA  → primer / último día del mes */
+    IF clean ~ '^\d{2}[/-]\d{4}$' THEN
+        clean := regexp_replace(clean, '-', '/', 'g');
+        RETURN CASE WHEN is_end
+                    THEN (date_trunc('month',
+                          to_date('01/'||clean,'DD/MM/YYYY')
+                         ) + interval '1 month -1 day')::date
+                    ELSE to_date('01/'||clean,'DD/MM/YYYY')
+               END;
+    END IF;
+
+    /* 4) ⚡  AAAA/MM  **o**  AAAA-MM  → primer / último día del mes */
+    IF clean ~ '^\d{4}[/-]\d{2}$' THEN
+        clean := regexp_replace(clean, '-', '/', 'g');      -- unificamos separador
+        RETURN CASE WHEN is_end
+                    THEN (date_trunc('month',
+                          to_date(clean||'/01','YYYY/MM/DD')
+                         ) + interval '1 month -1 day')::date
+                    ELSE to_date(clean||'/01','YYYY/MM/DD')
+               END;
+    END IF;
+
+    /* 5) «Mes AAAA» (ya estaba) */
+    IF clean ~ '^[[:alpha:]]+ \d{4}$' THEN
+        DECLARE
+            m int := month_number(split_part(clean,' ',1));
+            y int := split_part(clean,' ',2)::int;
+        BEGIN
+            IF m IS NULL THEN RETURN NULL; END IF;
+            RETURN CASE WHEN is_end
+                        THEN (make_date(y,m,1) + interval '1 month -1 day')::date
+                        ELSE  make_date(y,m,1)
+                   END;
+        END;
+    END IF;
+
+    /* 6) Solo AAAA (ya estaba) */
+    IF clean ~ '^\d{4}$' THEN
+        RETURN CASE WHEN is_end
+                    THEN make_date(clean::int,12,31)
+                    ELSE make_date(clean::int, 1, 1)
+               END;
+    END IF;
+
+    RETURN NULL;        -- formato desconocido
+END;
+$$;
+
+
+/*------------------------------------------------------------------
+-- 3)  build_period  (versión sin el bug de Enero)
+------------------------------------------------------------------*/
+CREATE OR REPLACE FUNCTION public.build_period(
+    d_ini date,
+    d_fin date
+) RETURNS text
+LANGUAGE plpgsql IMMUTABLE AS
+$$
+DECLARE
+  m_ini int := COALESCE(EXTRACT(MONTH FROM d_ini)::int, 1);
+  m_fin int := COALESCE(EXTRACT(MONTH FROM d_fin)::int, 12);
+
+  -- Índice 1‑12 directamente (sin hueco NULL)
+  meses_es text[] := ARRAY[
+    'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+  ];
+
+  inicio_txt text;
+  fin_txt    text;
+BEGIN
+  /* ---------- inicio ---------- */
+  IF d_ini IS NULL THEN
+      inicio_txt := '';
+  ELSIF m_ini = 1 THEN
+      -- empieza en enero → se suele mostrar solo el año
+      inicio_txt := TO_CHAR(d_ini,'YYYY');
+  ELSE
+      inicio_txt := meses_es[m_ini] || ' ' || TO_CHAR(d_ini,'YYYY');
+  END IF;
+
+  /* ---------- fin ---------- */
+  IF d_fin = DATE '9999-12-31' THEN
+      fin_txt := 'Actualidad';
+  ELSIF m_fin = 12 THEN
+      -- termina en diciembre → mostramos solo el año
+      fin_txt := TO_CHAR(d_fin,'YYYY');
+  ELSE
+      fin_txt := meses_es[m_fin] || ' ' || TO_CHAR(d_fin,'YYYY');
+  END IF;
+
+  RETURN inicio_txt || ' – ' || fin_txt;
+END;
+$$;
