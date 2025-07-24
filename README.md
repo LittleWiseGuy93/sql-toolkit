@@ -8,16 +8,13 @@ Está pensado como una **colección de soluciones prácticas** para problemas co
 
 ## 📁 Estructura del repositorio
 
----
-´´´´
+
+````
 sql-toolkit/
 ├── postgres/ # Consultas y funciones en PostgreSQL
 ├── sqlserver/ # Snippets avanzados para SSMS
-├── snowflake/ # Ejemplos de uso en Snowflake
-└── universales/ # Snippets compatibles con varios motores
-´´´´
----
-
+└── snowflake/ # Ejemplos de uso en Snowflake
+````
 ---
 
 ## 🔍 Contenido por carpeta
