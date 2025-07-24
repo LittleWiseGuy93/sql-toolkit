@@ -1,26 +1,65 @@
-# 🧰 SQL Toolkit
+# 🧠 SQL-toolkit · Repositorio de Consultas Reutilizables
 
-Colección de scripts y utilidades SQL desarrollados en entornos reales de producción.
+Este repositorio contiene ejemplos reales y reutilizables de SQL avanzados que he usado o estudiado en proyectos con **PostgreSQL**, **SQL Server (SSMS)** y **Snowflake**.
 
-## ✨ Contenido
+Está pensado como una **colección de soluciones prácticas** para problemas comunes de transformación, limpieza y estructuración de datos en distintos entornos.
 
-- Consultas para análisis de stock, trazabilidad y control logístico.
-- Procedimientos almacenados para carga y transformación de datos.
-- Scripts de detección y limpieza de datos inconsistentes.
-- Ejemplos de uso de funciones de ventana, joins complejos y subconsultas.
-- Automatización de reportes diarios con lógica de negocio integrada.
+---
 
-## 🗂️ Entornos de uso
+## 📁 Estructura del repositorio
 
-- SQL Server (T-SQL)
-- PostgreSQL
-- SAP Business One (consultas personalizadas)
-- Snowflake
+---
+´´´´
+sql-toolkit/
+├── postgres/ # Consultas y funciones en PostgreSQL
+├── sqlserver/ # Snippets avanzados para SSMS
+├── snowflake/ # Ejemplos de uso en Snowflake
+└── universales/ # Snippets compatibles con varios motores
+´´´´
+---
 
-## 👨‍💻 Aplicaciones reales
+---
 
-Estos scripts han sido utilizados en proyectos como:
-- Optimización de inventario logístico
-- Análisis de KPIs operativos en Power BI
-- Validación de cargas ETL en procesos Data Warehouse
+## 🔍 Contenido por carpeta
 
+### 🐘 PostgreSQL
+
+- `pivot_crosstab.sql`: Pivoteo dinámico con `crosstab()`
+- `json_multinivel.sql`: Construcción de JSON anidado desde múltiples tablas
+- `limpiar_nombres.sql`: Limpieza de campos usando expresiones regulares y `translate()`
+
+### 🪟 SQL Server
+
+- `duplicados_rownum.sql`: Detección de duplicados con `ROW_NUMBER()`
+- `pivot_dinamico.sql`: Pivot dinámico usando `PIVOT` + `STRING_AGG()`
+- `enmascaramiento.sql`: Enmascarar datos sensibles como nombres y teléfonos
+
+### ❄️ Snowflake
+
+- `qualify_recientes.sql`: Fila más reciente por ID con `QUALIFY`
+- `validacion_numeros.sql`: Validación de campos con `TRY_TO_NUMBER`
+- `json_construct.sql`: Creación de JSON anidado con `OBJECT_CONSTRUCT()` y `ARRAY_AGG()`
+
+### 🔄 Universales
+
+- `rolling_sum.sql`: Suma acumulada (ventana de 3 filas) válida en PostgreSQL, SSMS y Snowflake
+
+---
+
+## 📌 Objetivo
+
+- Tener plantillas listas para copiar y adaptar en distintos proyectos.
+- Documentar técnicas SQL avanzadas que solucionan problemas reales de negocio.
+- Centralizar mi conocimiento práctico en SQL y facilitar el acceso a funciones comunes.
+
+---
+
+## ✍️ Autor
+
+Desarrollado por **Juan Rodríguez** ([@LittleWiseGuy93](https://github.com/LittleWiseGuy93)) como parte de mi camino profesional como analista y futuro ingeniero de datos.
+
+---
+
+## 📄 Licencia
+
+MIT — uso libre para cualquier proyecto personal o profesional.
