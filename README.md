@@ -12,6 +12,7 @@ Está pensado como una **colección de soluciones prácticas** para problemas co
 ````
 sql-toolkit/
 ├── postgres/ # Consultas y funciones en PostgreSQL
+├── functions/ # funciones de normalizacion de periodos
 ├── sqlserver/ # Snippets avanzados para SSMS
 └── snowflake/ # Ejemplos de uso en Snowflake
 ````
